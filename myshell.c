@@ -12,7 +12,9 @@
 #include <ctype.h>
 #include "argparse.h"
 #include "builtin.h"
+#include <malloc.h>
 
+#define DEFAULT_BUFSIZE (1)
 
 /* PROTOTYPES */
 
@@ -31,10 +33,17 @@ ssize_t getinput(char** line, size_t* size);
 * Hint: Use getinput and processline as appropriate.
 */
 int main () {
+    size_t size = 0;
+    char *line = malloc(DEFAULT_BUFSIZE);
 
- //write your code
+    ssize_t length = getinput(&line, &size);
 
-  return EXIT_SUCCESS;
+    printf("   read: %s\n", line);
+    printf(" length: %lu\n", length);
+    printf("bufsize: %lu\n", size);
+
+    free(line);
+    return EXIT_SUCCESS;
 }
 
 
@@ -57,13 +66,29 @@ int main () {
 * Hint: There is a standard i/o function that can make getinput easier than it sounds.
 */
 ssize_t getinput(char** line, size_t* size) {
+    size_t bufsize = DEFAULT_BUFSIZE;
+    size_t cursize = 0;
+    char *runner = *line;
 
-  ssize_t len = 0;
+    char ch;
+    printf("%% ");
 
+    while ((ch = getchar()) != '\n') {
+        // +1 is size including null terminator
+        if ((cursize+1) >= bufsize) {
+            bufsize *= 2;
+            *line = realloc(*line, bufsize);
+            if (*line == 0) { perror("realloc()"); }
+            runner = *line+cursize;
+        }
+        *runner = ch;
+        runner++;
+        cursize++;
+    }
+    *runner = '\0';
 
-  //write your code
-
-  return len;
+    *size = bufsize;
+    return cursize;
 }
 
 
@@ -87,18 +112,17 @@ ssize_t getinput(char** line, size_t* size) {
 * Hint: The process should only fork when the line is not empty and not trying to
 *       run a built-in command.
 */
-void processline (char *line)
-{
- /*check whether line is empty*/
-  //write your code
+void processline (char *line) {
+    /*check whether line is empty*/
+    //write your code
 
-  pid_t cpid;
-  int   status;
-  int argCount;
-  char** arguments = argparse(line, &argCount);
+    pid_t cpid;
+    int   status;
+    int argCount;
+    char** arguments = argparse(line, &argCount);
 
-  /*check whether arguments are builtin commands
-   *if not builtin, fork to execute the command.
-   */
+    /*check whether arguments are builtin commands
+     *if not builtin, fork to execute the command.
+     */
     //write your code
 }
