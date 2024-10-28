@@ -19,7 +19,7 @@
 * argCount should be able to handle multiple whitespaces between arguments.
 *
 * Args:
-*   line: intput string containing command and arguments separated by whitespaces
+*   line: input string containing command and arguments separated by whitespaces
 *
 * Returns:
 *   The number of arguments in line.
@@ -29,9 +29,29 @@
 *   argCount("ls -l /home") returns 3
 *   argCount("   ls    -l   /home  ") returns 3
 */
-static int argCount(char*line)
-{
- //write your code
+static int argCount(char* line) {
+    /* LOGIC
+    if: !word and *runner is 'A':
+        => word = TRUE;
+           args++;
+    if: word and *runner is ' ' :
+        => word = FALSE;
+    */
+    size_t args = 0;
+    size_t word = FALSE; //boolean
+    char *runner = line;
+
+    while (*runner) {
+        if (!word && *runner != ' ') {
+            word = TRUE;
+            args++;
+        } else if (word && *runner == ' ') {
+            word = FALSE;
+        }
+        runner++;
+    }
+
+    return args;
 }
 
 
@@ -40,7 +60,7 @@ static int argCount(char*line)
 * argparse
 *
 * Parses an input line into an array of strings.
-* 
+*
 *
 * You may assume only whitespace is used to separate strings.
 * argparse should be able to handle multiple whitespaces between strings.
@@ -60,5 +80,7 @@ static int argCount(char*line)
 */
 char** argparse(char* line, int* argcp)
 {
-  //write your code
+
+    *argcp = argCount(line);
+    return 0;
 }
