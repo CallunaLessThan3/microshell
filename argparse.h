@@ -7,7 +7,6 @@
 * returns a array of char*'s each of which is a argument
 */
 char** argparse(char* line, int* argcp);
-static int argCount(char* line);
 
 #endif
 

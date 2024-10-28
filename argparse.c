@@ -1,3 +1,4 @@
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
@@ -78,9 +79,32 @@ static int argCount(char* line) {
 *   argparse("ls -l /home", &argc) --> returns ["ls", "-l", "/home"] and set argc to 3
 *   argparse("   ls    -l   /home  ", &argc) --> returns ["ls", "-l", "/home"] and set argc to 3
 */
-char** argparse(char* line, int* argcp)
-{
-
+//all of this feels bad ;w;
+char** argparse(char* line, int* argcp) {
     *argcp = argCount(line);
-    return 0;
+    char **ret = malloc((*argcp) * sizeof(char *));
+    char **ret_runner = ret;
+    char *runner = line;
+
+    size_t cur_arg = 0;
+    while (cur_arg < *argcp) {
+        int word_len = 0;
+        char *word_start = runner;
+        //could use 2 runners: start, end => end-start = word_len
+        while (*runner && *runner != ' ') {
+            runner++;
+            word_len++;
+        }
+
+        if (word_len > 0) {
+            *ret_runner = malloc(word_len + 1);
+            memcpy(*ret_runner, word_start, word_len);
+            (*ret_runner)[word_len] = '\0';
+            ret_runner++;
+            cur_arg++;
+        }
+        runner++;
+    }
+
+    return ret;
 }
