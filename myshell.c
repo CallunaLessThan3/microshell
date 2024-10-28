@@ -35,12 +35,22 @@ ssize_t getinput(char** line, size_t* size);
 int main () {
     size_t size = 0;
     char *line = malloc(DEFAULT_BUFSIZE);
+    int argcp;
 
     ssize_t length = getinput(&line, &size);
+    processline(line);
+
+    /*
+    char **args = argparse(line, &argcp);
 
     printf("   read: %s\n", line);
     printf(" length: %lu\n", length);
     printf("bufsize: %lu\n", size);
+    for (size_t i=0; i<argcp; i++) {
+        printf("  arg %lu: %s\n", i, args[i]);
+    }
+    */
+
 
     free(line);
     return EXIT_SUCCESS;
@@ -78,7 +88,6 @@ ssize_t getinput(char** line, size_t* size) {
         if ((cursize+1) >= bufsize) {
             bufsize *= 2;
             *line = realloc(*line, bufsize);
-            if (*line == 0) { perror("realloc()"); }
             runner = *line+cursize;
         }
         *runner = ch;
@@ -113,16 +122,28 @@ ssize_t getinput(char** line, size_t* size) {
 *       run a built-in command.
 */
 void processline (char *line) {
-    /*check whether line is empty*/
-    //write your code
+    /* check whether line is empty */
+    if (strlen(line) < 1) { return; }
 
     pid_t cpid;
-    int   status;
+    int status;
     int argCount;
     char** arguments = argparse(line, &argCount);
 
-    /*check whether arguments are builtin commands
-     *if not builtin, fork to execute the command.
-     */
-    //write your code
+    /* check whether arguments are builtin commands
+       if not builtin, fork to execute the command. */
+    if (builtIn(arguments, argCount)) { return; } //TODO: implement
+    else {
+        cpid = fork();
+        if (cpid == -1) { perror("fork()"); }
+        //child
+        if (cpid == 0) {
+            if (execvp(*arguments, arguments) == -1) { perror("execvp()"); }
+            return;
+        //parent
+        } else {
+            wait(&status);
+        }
+    }
 }
+
