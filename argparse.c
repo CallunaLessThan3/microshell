@@ -82,7 +82,7 @@ static int argCount(char* line) {
 //all of this feels bad ;w;
 char** argparse(char* line, int* argcp) {
     *argcp = argCount(line);
-    char **ret = malloc((*argcp) * sizeof(char *));
+    char **ret = calloc((*argcp)+1, sizeof(char *));
     char **ret_runner = ret;
     char *runner = line;
 
@@ -97,9 +97,8 @@ char** argparse(char* line, int* argcp) {
         }
 
         if (word_len > 0) {
-            *ret_runner = malloc(word_len + 1);
+            *ret_runner = calloc(word_len+1, sizeof(char));
             memcpy(*ret_runner, word_start, word_len);
-            (*ret_runner)[word_len] = '\0';
             ret_runner++;
             cur_arg++;
         }
