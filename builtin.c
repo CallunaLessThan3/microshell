@@ -14,7 +14,9 @@
 #include <grp.h>
 #include <pwd.h>
 #include "builtin.h"
+#include <sys/time.h>
 #include <time.h>
+#include <utime.h>
 
 //Prototypes
 static void exitProgram(char** args, int argcp);
@@ -154,20 +156,21 @@ static void cd(char** args, int argcp) {
 
 
 static void cmdB_stat(char** args, int argc) {
-    char *filename = args[1];
-    struct stat file_info;
-    int status = stat(filename, &file_info);
-    if (status == -1) {
-        perror("stat");
+    if (argc < 2) {
+        fprintf(stderr, "stat: not enough arguments\n");
         return;
     }
+
+
+    char *filename = args[1];
+    struct stat file_info;
+    if(stat(filename, &file_info) == -1) perror("stat");
 
     struct group group_info = *getgrgid(file_info.st_gid);
     struct passwd user_info = *getpwuid(file_info.st_uid);
     int file_mode = file_info.st_mode;
 
 
-    //TODO: maybe extract to diff function
     char *file_type;
     if      (S_ISREG(file_mode))    file_type = "regular file";
     else if (S_ISDIR(file_mode))    file_type = "directory";
@@ -181,7 +184,6 @@ static void cmdB_stat(char** args, int argc) {
     }
 
 
-    //TODO: maybe extract to diff function
     int perms = file_mode&0777;
     char perms_h[11];
     perms_h[0] = (S_ISDIR(file_mode)) ? 'd' : '-';
@@ -196,10 +198,9 @@ static void cmdB_stat(char** args, int argc) {
     perms_h[9] = (S_IXOTH & perms)    ? 'x' : '-';
 
 
-    //TODO: set time to local, maybe extract to diff function
-    struct tm *atime = gmtime(&file_info.st_atime);
-    struct tm *mtime = gmtime(&file_info.st_mtime);
-    struct tm *ctime = gmtime(&file_info.st_ctime);
+    struct tm *atime = localtime(&file_info.st_atime);
+    struct tm *mtime = localtime(&file_info.st_mtime);
+    struct tm *ctime = localtime(&file_info.st_ctime);
 
     char atime_h[99];
     char mtime_h[99];
@@ -254,7 +255,6 @@ static void cmdB_tail(char** args, int argc) {
         size_t num_lines = (total_lines >= 10) ? 10 : total_lines;
         size_t start_line = total_lines - num_lines;
 
-        //"seek" to start line
         if (fseek(fp, 0, SEEK_SET)) perror("fseek");
 
         size_t cur_line = 0;
@@ -265,10 +265,10 @@ static void cmdB_tail(char** args, int argc) {
         size_t size = tail_end-tail_start;
 
         // read/write tail of file
-        char buf[size];
+        char buf[size+1];
         fread(buf, sizeof(char), size, fp);
 
-        if (argc > 2) printf("==> %s <==\n", filename);
+        if (argc > 2) printf("\n==> %s <==\n", filename);
         fwrite(buf, sizeof(char), size, stdout);
         fclose(fp);
     }
@@ -278,5 +278,17 @@ static void cmdB_tail(char** args, int argc) {
 
 
 static void cmdB_touch(char** args, int argc) {
+    if (argc < 2) {
+        fprintf(stderr, "touch: not enough arguments\n");
+        return;
+    }
+
+    char *filename = args[1];
+    int perms = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
+    int fd = open(filename, O_APPEND | O_CREAT, perms);
+    if (fd == -1) perror("open");
+    if (utime(filename, NULL) == -1) perror("utime");
+
+    close(fd);
     return;
 }
