@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <linux/limits.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -127,6 +128,20 @@ static void exitProgram(char** args, int argcp) {
 *   Output: /some/path/to/directory
 */
 static void pwd(char** args, int argpc) {
+    if (argpc > 1) {
+        fprintf(stderr, "pwd: requires no arguments");
+        return;
+    }
+
+
+    size_t path_sz = 4096;
+    char path[path_sz];
+    if (!getcwd(path, path_sz)) {
+        perror("getcwd");
+        return;
+    }
+
+    printf("%s\n", path);
     return;
 }
 
@@ -165,7 +180,10 @@ static void cmdB_stat(char** args, int argc) {
     for (size_t i=1; i < argc; i++) {
         char *filename = args[i];
         struct stat file_info;
-        if(stat(filename, &file_info) == -1) perror("stat");
+        if(stat(filename, &file_info) == -1) {
+            perror("stat");
+            return;
+        }
 
         struct group group_info = *getgrgid(file_info.st_gid);
         struct passwd user_info = *getpwuid(file_info.st_uid);
@@ -259,8 +277,12 @@ static void cmdB_tail(char** args, int argc) {
         size_t num_lines = (total_lines >= 10) ? 10 : total_lines;
         size_t start_line = total_lines - num_lines;
 
+        if (fseek(fp, 0, SEEK_SET)) {
+            perror("fseek");
+            return;
+        }
+
         // seek to start line
-        if (fseek(fp, 0, SEEK_SET)) perror("fseek");
         size_t cur_line = 0;
         while (cur_line < start_line) {
             if (fgetc(fp) == '\n') cur_line++;
@@ -275,7 +297,6 @@ static void cmdB_tail(char** args, int argc) {
         fwrite(buf, sizeof(char), size, stdout);
 
         fclose(fp);
-        return;
     }
 
     return;
@@ -292,9 +313,12 @@ static void cmdB_touch(char** args, int argc) {
     for (size_t i=0; i < argc; i++) {
         char *filename = args[i];
         FILE *fp = fopen(filename, "a");
-        if (!fp) perror("fopen");
-        if (utime(filename, NULL) == -1) perror("utime");
+        if (!fp) {
+            perror("fopen");
+            return;
+        }
 
+        if (utime(filename, NULL) == -1) perror("utime");
         fclose(fp);
     }
 
