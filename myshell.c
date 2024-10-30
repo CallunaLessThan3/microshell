@@ -37,10 +37,14 @@ int main () {
     char *line = malloc(DEFAULT_BUFSIZE);
     int argcp;
 
+    char *args[] = { "stat", "WOAW", NULL };
+    argcp = 2;
+
+    builtIn(args, argcp);
+    /*
     ssize_t length = getinput(&line, &size);
     processline(line);
 
-    /*
     char **args = argparse(line, &argcp);
 
     printf("   read: %s\n", line);
@@ -123,7 +127,7 @@ ssize_t getinput(char** line, size_t* size) {
 */
 void processline (char *line) {
     /* check whether line is empty */
-    if (strlen(line) < 1) { return; }
+    if (strlen(line) < 1) return;
 
     pid_t cpid;
     int status;
@@ -132,13 +136,13 @@ void processline (char *line) {
 
     /* check whether arguments are builtin commands
        if not builtin, fork to execute the command. */
-    if (builtIn(arguments, argCount)) { return; } //TODO: implement
+    if (builtIn(arguments, argCount)) return;
     else {
         cpid = fork();
-        if (cpid == -1) { perror("fork()"); }
+        if (cpid == -1) perror("fork()");
         //child
         if (cpid == 0) {
-            if (execvp(*arguments, arguments) == -1) { perror("execvp()"); }
+            if (execvp(*arguments, arguments) == -1) perror("execvp()");
             return;
         //parent
         } else {

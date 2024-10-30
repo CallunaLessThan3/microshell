@@ -154,8 +154,9 @@ static void cd(char** args, int argcp) {
 
 
 static void cmdB_stat(char** args, int argc) {
+    char *filename = args[1];
     struct stat file_info;
-    int status = stat(args[1], &file_info);
+    int status = stat(filename, &file_info);
     if (status == -1) {
         perror("stat");
         return;
@@ -168,18 +169,21 @@ static void cmdB_stat(char** args, int argc) {
 
     //TODO: maybe extract to diff function
     char *file_type;
-    if      (S_ISREG(file_mode))    { file_type = "regular file";           }
-    else if (S_ISDIR(file_mode))    { file_type = "directory";              }
-    else if (S_ISLNK(file_mode))    { file_type = "symbolic link";          }
-    else if (S_ISCHR(file_mode))    { file_type = "character special file"; }
-    else if (S_ISBLK(file_mode))    { file_type = "block special file";     }
-    else if (S_ISFIFO(file_mode))   { file_type = "FIFO special file";      }
-    else                            { file_type = "unknown";                }
+    if      (S_ISREG(file_mode))    file_type = "regular file";
+    else if (S_ISDIR(file_mode))    file_type = "directory";
+    else if (S_ISLNK(file_mode))    file_type = "symbolic link";
+    else if (S_ISCHR(file_mode))    file_type = "character special file";
+    else if (S_ISBLK(file_mode))    file_type = "block special file";
+    else if (S_ISFIFO(file_mode))   file_type = "FIFO special file";
+    else {
+        fprintf(stderr, "stat: unknown filetype\n");
+        return;
+    }
 
 
     //TODO: maybe extract to diff function
     int perms = file_mode&0777;
-    char perms_h[10];
+    char perms_h[11];
     perms_h[0] = (S_ISDIR(file_mode)) ? 'd' : '-';
     perms_h[1] = (S_IRUSR & perms)    ? 'r' : '-';
     perms_h[2] = (S_IWUSR & perms)    ? 'w' : '-';
@@ -213,7 +217,7 @@ static void cmdB_stat(char** args, int argc) {
            "Access: %s\n"
            "Modify: %s\n"
            "Change: %s\n",
-           args[1],
+           filename,
            file_info.st_size, file_info.st_blocks, file_info.st_blksize, file_type,
            file_info.st_rdev, file_info.st_dev, file_info.st_ino, file_info.st_nlink,
            perms, perms_h, file_info.st_uid, user_info.pw_name, file_info.st_gid, group_info.gr_name,
@@ -243,7 +247,7 @@ static void cmdB_tail(char** args, int argc) {
         //count # lines
         total_lines = 0;
         while (!feof(fp)) {
-            if (fgetc(fp) == '\n') { total_lines++; }
+            if (fgetc(fp) == '\n') total_lines++;
         }
         size_t tail_end = ftell(fp);
 
@@ -251,20 +255,20 @@ static void cmdB_tail(char** args, int argc) {
         size_t start_line = total_lines - num_lines;
 
         //"seek" to start line
-        if (fseek(fp, 0, SEEK_SET)) { perror("fseek"); }
+        if (fseek(fp, 0, SEEK_SET)) perror("fseek");
 
         size_t cur_line = 0;
         while (cur_line < start_line) {
-            if (fgetc(fp) == '\n') { cur_line++; }
+            if (fgetc(fp) == '\n') cur_line++;
         }
         size_t tail_start = ftell(fp);
+        size_t size = tail_end-tail_start;
 
         // read/write tail of file
-        size_t size = tail_end-tail_start;
         char buf[size];
         fread(buf, sizeof(char), size, fp);
 
-        if (argc > 2) { printf("==> %s <==\n", filename); }
+        if (argc > 2) printf("==> %s <==\n", filename);
         fwrite(buf, sizeof(char), size, stdout);
         fclose(fp);
     }
