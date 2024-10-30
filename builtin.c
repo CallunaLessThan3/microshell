@@ -14,6 +14,7 @@
 #include <grp.h>
 #include <pwd.h>
 #include "builtin.h"
+#include <time.h>
 
 //Prototypes
 static void exitProgram(char** args, int argcp);
@@ -152,29 +153,6 @@ static void cd(char** args, int argcp) {
 }
 
 
-/*
-* fileType
-*
-* Helper for cmdB_stat.
-* Sets file_type to file type of given file
-*
-* Args:
-*   file: stat struct for file
-*   file_type: string stating file type
-*/
-static void fileType(struct stat* file, char** file_type) {
-    int file_mode = (*file).st_mode;
-    if      (S_ISREG(file_mode))    { *file_type = "regular file";           }
-    else if (S_ISDIR(file_mode))    { *file_type = "directory";              }
-    else if (S_ISLNK(file_mode))    { *file_type = "symbolic link";          }
-    else if (S_ISCHR(file_mode))    { *file_type = "character special file"; }
-    else if (S_ISBLK(file_mode))    { *file_type = "block special file";     }
-    else if (S_ISFIFO(file_mode))   { *file_type = "FIFO special file";      }
-    else                            { *file_type = "unknown";                }
-    return;
-}
-
-
 static void cmdB_stat(char** args, int argc) {
     struct stat file_info;
     int status = stat(args[1], &file_info);
@@ -185,45 +163,112 @@ static void cmdB_stat(char** args, int argc) {
 
     struct group group_info = *getgrgid(file_info.st_gid);
     struct passwd user_info = *getpwuid(file_info.st_uid);
+    int file_mode = file_info.st_mode;
 
-    char *file_type;
-    fileType(&file_info, &file_type);
 
     //TODO: maybe extract to diff function
+    char *file_type;
+    if      (S_ISREG(file_mode))    { file_type = "regular file";           }
+    else if (S_ISDIR(file_mode))    { file_type = "directory";              }
+    else if (S_ISLNK(file_mode))    { file_type = "symbolic link";          }
+    else if (S_ISCHR(file_mode))    { file_type = "character special file"; }
+    else if (S_ISBLK(file_mode))    { file_type = "block special file";     }
+    else if (S_ISFIFO(file_mode))   { file_type = "FIFO special file";      }
+    else                            { file_type = "unknown";                }
+
+
+    //TODO: maybe extract to diff function
+    int perms = file_mode&0777;
     char perms_h[10];
-    int perms = file_info.st_mode&0777;
-    perms_h[0] = (S_ISDIR(file_info.st_mode)) ? 'd' : '-';
-    perms_h[1] = (S_IRUSR & perms) ? 'r' : '-';
-    perms_h[2] = (S_IWUSR & perms) ? 'w' : '-';
-    perms_h[3] = (S_IXUSR & perms) ? 'x' : '-';
-    perms_h[4] = (S_IRGRP & perms) ? 'r' : '-';
-    perms_h[5] = (S_IWGRP & perms) ? 'w' : '-';
-    perms_h[6] = (S_IXGRP & perms) ? 'x' : '-';
-    perms_h[7] = (S_IROTH & perms) ? 'r' : '-';
-    perms_h[8] = (S_IWOTH & perms) ? 'w' : '-';
-    perms_h[9] = (S_IXOTH & perms) ? 'x' : '-';
+    perms_h[0] = (S_ISDIR(file_mode)) ? 'd' : '-';
+    perms_h[1] = (S_IRUSR & perms)    ? 'r' : '-';
+    perms_h[2] = (S_IWUSR & perms)    ? 'w' : '-';
+    perms_h[3] = (S_IXUSR & perms)    ? 'x' : '-';
+    perms_h[4] = (S_IRGRP & perms)    ? 'r' : '-';
+    perms_h[5] = (S_IWGRP & perms)    ? 'w' : '-';
+    perms_h[6] = (S_IXGRP & perms)    ? 'x' : '-';
+    perms_h[7] = (S_IROTH & perms)    ? 'r' : '-';
+    perms_h[8] = (S_IWOTH & perms)    ? 'w' : '-';
+    perms_h[9] = (S_IXOTH & perms)    ? 'x' : '-';
 
 
-    //TODO: set time to something readable
+    //TODO: set time to local, maybe extract to diff function
+    struct tm *atime = gmtime(&file_info.st_atime);
+    struct tm *mtime = gmtime(&file_info.st_mtime);
+    struct tm *ctime = gmtime(&file_info.st_ctime);
+
+    char atime_h[99];
+    char mtime_h[99];
+    char ctime_h[99];
+    char *format = "%Y-%m-%d %T";
+    size_t atime_status = strftime(atime_h, 99, format, atime);
+    size_t mtime_status = strftime(mtime_h, 99, format, mtime);
+    size_t ctime_status = strftime(ctime_h, 99, format, ctime);
+
+
     printf("  File: %s\n"
            "  Size: %lu \tBlocks: %lu \tIO Block: %lu \t%s\n"
            "Device: %lu,%lu \tInode: %lu \tLinks: %lu\n"
            "Access: ( %04o/%s ) \tUid: ( %d/ %s ) \tGid: ( %d/ %s )\n"
-           "Access: %lu\n"
-           "Modify: %lu\n"
-           "Change: %lu\n",
+           "Access: %s\n"
+           "Modify: %s\n"
+           "Change: %s\n",
            args[1],
            file_info.st_size, file_info.st_blocks, file_info.st_blksize, file_type,
            file_info.st_rdev, file_info.st_dev, file_info.st_ino, file_info.st_nlink,
            perms, perms_h, file_info.st_uid, user_info.pw_name, file_info.st_gid, group_info.gr_name,
-           file_info.st_atime,
-           file_info.st_mtime,
-           file_info.st_ctime);
+           atime_h,
+           mtime_h,
+           ctime_h);
     return;
 }
 
 
+// whitespace looks bad
 static void cmdB_tail(char** args, int argc) {
+    if (argc < 2) {
+        fprintf(stderr, "tail: not enough arguments\n");
+        return;
+    }
+
+    size_t total_lines;
+    for (size_t i=1; i < argc; i++) {
+        char *filename = args[i];
+        FILE *fp = fopen(filename, "r");
+        if (!fp) {
+            perror("fopen");
+            return;
+        }
+
+        //count # lines
+        total_lines = 0;
+        while (!feof(fp)) {
+            if (fgetc(fp) == '\n') { total_lines++; }
+        }
+        size_t tail_end = ftell(fp);
+
+        size_t num_lines = (total_lines >= 10) ? 10 : total_lines;
+        size_t start_line = total_lines - num_lines;
+
+        //"seek" to start line
+        if (fseek(fp, 0, SEEK_SET)) { perror("fseek"); }
+
+        size_t cur_line = 0;
+        while (cur_line < start_line) {
+            if (fgetc(fp) == '\n') { cur_line++; }
+        }
+        size_t tail_start = ftell(fp);
+
+        // read/write tail of file
+        size_t size = tail_end-tail_start;
+        char buf[size];
+        fread(buf, sizeof(char), size, fp);
+
+        if (argc > 2) { printf("==> %s <==\n", filename); }
+        fwrite(buf, sizeof(char), size, stdout);
+        fclose(fp);
+    }
+
     return;
 }
 
