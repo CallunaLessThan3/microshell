@@ -32,21 +32,21 @@
 */
 static int argCount(char* line) {
     /* LOGIC
-    if: !word and *runner is 'A':
+    if: !word and *runner is !space:
         => word = TRUE;
            args++;
-    if: word and *runner is ' ' :
+    if: word and *runner is space:
         => word = FALSE;
     */
     size_t args = 0;
-    size_t word = FALSE; //boolean
+    size_t word = FALSE;
     char *runner = line;
 
     while (*runner) {
-        if (!word && *runner != ' ') {
+        if (!word && !isspace(*runner)) {
             word = TRUE;
             args++;
-        } else if (word && *runner == ' ') {
+        } else if (word && isspace(*runner)) {
             word = FALSE;
         }
         runner++;
@@ -91,7 +91,7 @@ char** argparse(char* line, int* argcp) {
         int word_len = 0;
         char *word_start = runner;
         //could use 2 runners: start, end => end-start = word_len
-        while (*runner && *runner != ' ') {
+        while (*runner && !isspace(*runner)) {
             runner++;
             word_len++;
         }
