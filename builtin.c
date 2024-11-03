@@ -19,17 +19,17 @@
 #include <time.h>
 #include <utime.h>
 
-//Prototypes
+// Prototypes
 static void exitProgram(char** args, int argcp);
 static void cd(char** args, int argpcp);
 static void pwd(char** args, int argcp);
 
-//Group A
+// Group A
 static void cmdA_ls(char** args, int argc);
 static void cmdA_cp(char** args, int argc);
 static void cmdA_env(char** args, int argc);
 
-//Group B
+// Group B
 static void cmdB_stat(char** args, int argc);
 static void cmdB_tail(char** args, int argc);
 static void cmdB_touch(char** args, int argc);
@@ -177,6 +177,7 @@ static void cmdB_stat(char** args, int argc) {
     }
 
 
+    // Iterate over every file
     for (size_t i=1; i < argc; i++) {
         char *filename = args[i];
         struct stat file_info;
@@ -190,6 +191,7 @@ static void cmdB_stat(char** args, int argc) {
         int file_mode = file_info.st_mode;
 
 
+        // Get filetype
         char *file_type;
         if      (S_ISREG(file_mode))    file_type = "regular file";
         else if (S_ISDIR(file_mode))    file_type = "directory";
@@ -203,6 +205,7 @@ static void cmdB_stat(char** args, int argc) {
         }
 
 
+        // Get permission info
         int perms = file_mode&0777;
         char perms_h[11];
         perms_h[0] = (S_ISDIR(file_mode)) ? 'd' : '-';
@@ -217,6 +220,7 @@ static void cmdB_stat(char** args, int argc) {
         perms_h[9] = (S_IXOTH & perms)    ? 'x' : '-';
 
 
+        // Get time info
         struct tm *atime = localtime(&file_info.st_atime);
         struct tm *mtime = localtime(&file_info.st_mtime);
         struct tm *ctime = localtime(&file_info.st_ctime);
@@ -230,6 +234,7 @@ static void cmdB_stat(char** args, int argc) {
         strftime(ctime_h, 20, format, ctime);
 
 
+        // Display
         printf("  File: %s\n"
                "  Size: %lu \tBlocks: %lu \tIO Block: %lu \t%s\n"
                "Device: %lu,%lu \tInode: %lu \tLinks: %lu\n"
@@ -257,8 +262,7 @@ static void cmdB_tail(char** args, int argc) {
     }
 
 
-    // iterate over every file
-    size_t total_lines;
+    // Iterate over every file
     for (size_t i=1; i < argc; i++) {
         char *filename = args[i];
         FILE *fp = fopen(filename, "r");
@@ -268,29 +272,34 @@ static void cmdB_tail(char** args, int argc) {
         }
 
 
-        total_lines = 0;
+        // Get total # lines
+        int total_lines = 0;
         while (!feof(fp)) {
             if (fgetc(fp) == '\n') total_lines++;
         }
 
+        // Find start of tail, how many lines in tail
         size_t tail_end = ftell(fp);
-        size_t num_lines = (total_lines >= 10) ? 10 : total_lines;
-        size_t start_line = total_lines - num_lines;
+        int num_lines = (total_lines >= 10) ? 10 : total_lines;
+        int start_line = total_lines - num_lines;
 
         if (fseek(fp, 0, SEEK_SET)) {
             perror("fseek");
+            fclose(fp);
             return;
         }
 
-        // seek to start line
-        size_t cur_line = 0;
+        // Seek to start of tail
+        int cur_line = 0;
         while (cur_line < start_line) {
             if (fgetc(fp) == '\n') cur_line++;
         }
 
+        // Find amount of bytes in tail
         size_t tail_start = ftell(fp);
         size_t size = tail_end-tail_start;
 
+        // Print tail
         char buf[size+1];
         fread(buf, sizeof(char), size, fp);
         if (argc > 2) printf("\n==> %s <==\n", filename);
@@ -310,15 +319,24 @@ static void cmdB_touch(char** args, int argc) {
     }
 
 
+    // Iterate over every file
     for (size_t i=0; i < argc; i++) {
         char *filename = args[i];
+
+        // Create file/open file
         FILE *fp = fopen(filename, "a");
         if (!fp) {
             perror("fopen");
             return;
         }
 
-        if (utime(filename, NULL) == -1) perror("utime");
+        // Update access/modify times
+        if (utime(filename, NULL) == -1) {
+            perror("utime");
+            fclose(fp);
+            return;
+        }
+
         fclose(fp);
     }
 
