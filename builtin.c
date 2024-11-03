@@ -21,18 +21,18 @@
 
 // Prototypes
 static void exitProgram(char** args, int argcp);
-static void cd(char** args, int argpcp);
+static void cd(char** args, int argcp);
 static void pwd(char** args, int argcp);
 
 // Group A
-static void cmdA_ls(char** args, int argc);
-static void cmdA_cp(char** args, int argc);
-static void cmdA_env(char** args, int argc);
+static void cmdA_ls(char** args, int argcp);
+static void cmdA_cp(char** args, int argcp);
+static void cmdA_env(char** args, int argcp);
 
 // Group B
-static void cmdB_stat(char** args, int argc);
-static void cmdB_tail(char** args, int argc);
-static void cmdB_touch(char** args, int argc);
+static void cmdB_stat(char** args, int argcp);
+static void cmdB_tail(char** args, int argcp);
+static void cmdB_touch(char** args, int argcp);
 
 #define TRUE  (1)
 #define FALSE (0)
@@ -57,7 +57,6 @@ static void cmdB_touch(char** args, int argc);
 * Hint: Refer to checklist for group specific examples
 */
 int builtIn(char** args, int argcp) {
-    //TEMPORARY: consider using struct or #defines and switch statement
     int builtin;
     if (!strcmp(*args, "exit")) {
         exitProgram(args, argcp);
@@ -102,12 +101,17 @@ int builtIn(char** args, int argcp) {
 *   argcp: number of elements in args array
 */
 static void exitProgram(char** args, int argcp) {
-    int status = 0;
-    if (argcp == 2) {
-        status = atoi(args[1]);
-    } else if (argcp > 2) {
-        fprintf(stderr, "exit: too many arguments\n");
-        return;
+    int status;
+    switch (argcp) {
+        case 1:
+            status = 0;
+            break;
+        case 2:
+            status = atoi(args[1]);
+            break;
+        default:
+            fprintf(stderr, "exit: too many arguments\n");
+            return;
     }
 
     exit(status);
@@ -127,8 +131,8 @@ static void exitProgram(char** args, int argcp) {
 *   Command: $ pwd
 *   Output: /some/path/to/directory
 */
-static void pwd(char** args, int argpc) {
-    if (argpc > 1) {
+static void pwd(char** args, int argcp) {
+    if (argcp > 1) {
         fprintf(stderr, "pwd: requires no arguments");
         return;
     }
@@ -166,19 +170,37 @@ static void pwd(char** args, int argpc) {
 * Hint: Read the man page for chdir(2)
 */
 static void cd(char** args, int argcp) {
+    char *path;
+    switch (argcp) {
+        case 1:
+            path = "~/";
+            break;
+        case 2:
+            path = args[1];
+            break;
+        default:
+            fprintf(stderr, "cd: too many arguments\n");
+            return;
+    }
+
+    if (chdir(path) == -1) {
+        perror("path");
+        return;
+    }
+
     return;
 }
 
 
-static void cmdB_stat(char** args, int argc) {
-    if (argc < 2) {
+static void cmdB_stat(char** args, int argcp) {
+    if (argcp < 2) {
         fprintf(stderr, "stat: not enough arguments\n");
         return;
     }
 
 
     // Iterate over every file
-    for (size_t i=1; i < argc; i++) {
+    for (size_t i=1; i < argcp; i++) {
         char *filename = args[i];
         struct stat file_info;
         if(stat(filename, &file_info) == -1) {
@@ -193,12 +215,12 @@ static void cmdB_stat(char** args, int argc) {
 
         // Get filetype
         char *file_type;
-        if      (S_ISREG(file_mode))    file_type = "regular file";
-        else if (S_ISDIR(file_mode))    file_type = "directory";
-        else if (S_ISLNK(file_mode))    file_type = "symbolic link";
-        else if (S_ISCHR(file_mode))    file_type = "character special file";
-        else if (S_ISBLK(file_mode))    file_type = "block special file";
-        else if (S_ISFIFO(file_mode))   file_type = "FIFO special file";
+        if      (S_ISREG(file_mode))    { file_type = "regular file";           }
+        else if (S_ISDIR(file_mode))    { file_type = "directory";              }
+        else if (S_ISLNK(file_mode))    { file_type = "symbolic link";          }
+        else if (S_ISCHR(file_mode))    { file_type = "character special file"; }
+        else if (S_ISBLK(file_mode))    { file_type = "block special file";     }
+        else if (S_ISFIFO(file_mode))   { file_type = "FIFO special file";      }
         else {
             fprintf(stderr, "stat: unknown filetype\n");
             return;
@@ -234,7 +256,7 @@ static void cmdB_stat(char** args, int argc) {
         strftime(ctime_h, 20, format, ctime);
 
 
-        // Display
+        // Print info
         printf("  File: %s\n"
                "  Size: %lu \tBlocks: %lu \tIO Block: %lu \t%s\n"
                "Device: %lu,%lu \tInode: %lu \tLinks: %lu\n"
@@ -255,15 +277,15 @@ static void cmdB_stat(char** args, int argc) {
 }
 
 
-static void cmdB_tail(char** args, int argc) {
-    if (argc < 2) {
+static void cmdB_tail(char** args, int argcp) {
+    if (argcp < 2) {
         fprintf(stderr, "tail: not enough arguments\n");
         return;
     }
 
 
     // Iterate over every file
-    for (size_t i=1; i < argc; i++) {
+    for (size_t i=1; i < argcp; i++) {
         char *filename = args[i];
         FILE *fp = fopen(filename, "r");
         if (!fp) {
@@ -302,7 +324,7 @@ static void cmdB_tail(char** args, int argc) {
         // Print tail
         char buf[size+1];
         fread(buf, sizeof(char), size, fp);
-        if (argc > 2) printf("\n==> %s <==\n", filename);
+        if (argcp > 2) printf("\n==> %s <==\n", filename);
         fwrite(buf, sizeof(char), size, stdout);
 
         fclose(fp);
@@ -312,15 +334,15 @@ static void cmdB_tail(char** args, int argc) {
 }
 
 
-static void cmdB_touch(char** args, int argc) {
-    if (argc < 2) {
+static void cmdB_touch(char** args, int argcp) {
+    if (argcp < 2) {
         fprintf(stderr, "touch: not enough arguments\n");
         return;
     }
 
 
     // Iterate over every file
-    for (size_t i=0; i < argc; i++) {
+    for (size_t i=0; i < argcp; i++) {
         char *filename = args[i];
 
         // Create file/open file
