@@ -14,12 +14,15 @@
 #include "builtin.h"
 #include <malloc.h>
 
-#define DEFAULT_BUFSIZE (1)
 
 /* PROTOTYPES */
-
 void processline (char *line);
 ssize_t getinput(char** line, size_t* size);
+void cleanup(void);
+
+static char *line;
+static char **args;
+static int argcp;
 
 
 /*
@@ -32,32 +35,34 @@ ssize_t getinput(char** line, size_t* size);
 *
 * Hint: Use getinput and processline as appropriate.
 */
+
 int main () {
-    size_t size = 0;
-    char *line = malloc(DEFAULT_BUFSIZE);
-    int argcp;
-
-    char *args[] = { "stat", "WOAW", NULL };
-    argcp = 2;
-
-    builtIn(args, argcp);
-    /*
-    ssize_t length = getinput(&line, &size);
-    processline(line);
-
-    char **args = argparse(line, &argcp);
-
-    printf("   read: %s\n", line);
-    printf(" length: %lu\n", length);
-    printf("bufsize: %lu\n", size);
-    for (size_t i=0; i<argcp; i++) {
-        printf("  arg %lu: %s\n", i, args[i]);
+    atexit(&cleanup);
+    while (1) {
+        size_t size;
+        getinput(&line, &size);
+        processline(line);
+        cleanup();
     }
-    */
 
-
-    free(line);
     return EXIT_SUCCESS;
+}
+
+
+/*
+ * cleanup
+ *
+ * Frees allocated memory
+*/
+void cleanup(void) {
+    for (size_t i=0; i < argcp; i++) {
+        free(args[i]);
+    }
+
+    free(args);
+    free(line);
+
+    return;
 }
 
 
@@ -80,13 +85,15 @@ int main () {
 * Hint: There is a standard i/o function that can make getinput easier than it sounds.
 */
 ssize_t getinput(char** line, size_t* size) {
-    size_t bufsize = DEFAULT_BUFSIZE;
+    size_t bufsize = 2;
     size_t cursize = 0;
+    *line = malloc(bufsize);
     char *runner = *line;
 
-    char ch;
     printf("%% ");
 
+    // Allocates enough space for stdin by doubling each time
+    char ch;
     while ((ch = getchar()) != '\n') {
         // +1 is size including null terminator
         if ((cursize+1) >= bufsize) {
@@ -99,8 +106,15 @@ ssize_t getinput(char** line, size_t* size) {
         cursize++;
     }
     *runner = '\0';
+    *size = cursize+1;
 
-    *size = bufsize;
+    // Allocates minimum amount of space for string
+    *line = realloc(*line, *size);
+    if(!(*line)) {
+        perror("realloc");
+        exit(-1);
+    }
+
     return cursize;
 }
 
@@ -125,8 +139,8 @@ ssize_t getinput(char** line, size_t* size) {
 * Hint: The process should only fork when the line is not empty and not trying to
 *       run a built-in command.
 */
-void processline (char *line) {
-    /* check whether line is empty */
+void processline(char *line) {
+    /* Check whether line is empty */
     if (strlen(line) < 1) return;
 
     pid_t cpid;
@@ -134,18 +148,19 @@ void processline (char *line) {
     int argCount;
     char** arguments = argparse(line, &argCount);
 
-    /* check whether arguments are builtin commands
+    /* Check whether arguments are builtin commands
        if not builtin, fork to execute the command. */
     if (builtIn(arguments, argCount)) return;
     else {
         cpid = fork();
-        if (cpid == -1) perror("fork()");
-        //child
+        if (cpid == -1) perror("fork");
+        // Child
         if (cpid == 0) {
-            if (execvp(*arguments, arguments) == -1) perror("execvp()");
+            if (execvp(*arguments, arguments) == -1) perror("execvp");
             return;
-        //parent
+        // Parent
         } else {
+            free(*arguments);
             wait(&status);
         }
     }

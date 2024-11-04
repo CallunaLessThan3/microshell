@@ -342,7 +342,7 @@ static void cmdB_touch(char** args, int argcp) {
 
 
     // Iterate over every file
-    for (size_t i=0; i < argcp; i++) {
+    for (size_t i=1; i < argcp; i++) {
         char *filename = args[i];
 
         // Create file/open file
